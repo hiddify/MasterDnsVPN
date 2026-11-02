@@ -482,6 +482,10 @@ func finalizeClientConfig(cfg ClientConfig) (ClientConfig, error) {
 
 	cfg.ResolversFilePath = strings.TrimSpace(cfg.ResolversFilePath)
 
+	if len(cfg.Resolvers) > 0 { //H: resolvers given in code (library use), no resolver file
+		return cfg, nil //H
+	} //H
+
 	resolvers, resolverMap, err := LoadClientResolvers(cfg.ResolversPath())
 	if err != nil {
 		return cfg, err

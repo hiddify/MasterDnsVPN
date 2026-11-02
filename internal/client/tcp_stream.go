@@ -90,6 +90,7 @@ func (c *Client) handleStreamConnected(packet VpnProto.Packet, s *Stream_client,
 	arqObj.SetIOReady(true)
 	s.SetStatus(streamStatusActive)
 	c.balancer.NoteStreamProgress(packet.StreamID)
+	c.deliverLibraryConnectResult(packet.StreamID, SOCKS5_REPLY_SUCCESS) //H
 	return nil
 }
 
@@ -110,6 +111,7 @@ func (c *Client) handleStreamConnectFail(_ VpnProto.Packet, s *Stream_client, ar
 
 	s.MarkTerminal(time.Now())
 	s.SetStatus(streamStatusTimeWait)
+	c.deliverLibraryConnectResult(s.StreamID, SOCKS5_REPLY_GENERAL_FAILURE) //H
 	arqObj.Close("STREAM connect failure received", arq.CloseOptions{Force: true})
 	return nil
 }

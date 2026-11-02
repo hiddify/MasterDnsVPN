@@ -25,6 +25,7 @@ type Logger struct {
 	color          bool
 	appNameText    string
 	appNameColored string
+	sink           Sink //H: set, it takes every line instead of the writers
 }
 
 const (
@@ -127,6 +128,11 @@ func (l *Logger) logf(level int, format string, args ...any) {
 
 	l.mu.Lock()
 	defer l.mu.Unlock()
+
+	if l.sink != nil { //H: embedded in another program, its logger writes the line
+		l.sink(level, plainMsg) //H
+		return                  //H
+	} //H
 
 	ts := time.Now().Format("2006/01/02 15:04:05")
 

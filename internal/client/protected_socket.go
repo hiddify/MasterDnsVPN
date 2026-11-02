@@ -26,6 +26,11 @@ import (
 // socket fd to the protect server before connect/bind, so an Android
 // VpnService host can keep it outside the tunnel. Otherwise it does nothing.
 func (c *Client) protectControl(network, address string, rc syscall.RawConn) error {
+	if c.socketControl != nil { //H: the embedding program's socket control (bind interface, mark, protect)
+		if err := c.socketControl(network, address, rc); err != nil { //H
+			return fmt.Errorf("socket control for %s %s: %w", network, address, err) //H
+		} //H
+	} //H
 	path := c.cfg.FDControlUnixSocket
 	if path == "" {
 		return nil

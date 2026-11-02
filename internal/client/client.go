@@ -15,6 +15,7 @@ import (
 	"net"
 	"sync"
 	"sync/atomic"
+	"syscall" //H
 	"time"
 
 	"masterdnsvpn-go/internal/arq"
@@ -134,6 +135,12 @@ type Client struct {
 
 	// SOCKS5 brute-force rate limiter
 	socksRateLimit *socksRateLimiter
+
+	// Library use (library.go): no local listeners, streams are opened with DialStream. //H
+	libraryMode      bool                                                    //H
+	socketControl    func(network, address string, rc syscall.RawConn) error //H
+	connectWaitersMu sync.Mutex                                              //H
+	connectWaiters   map[uint16]chan byte                                    //H
 }
 
 // clientStreamTXPacket represents a queued packet pending transmission or retransmission.

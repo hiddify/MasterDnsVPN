@@ -442,7 +442,8 @@ func (c *Client) writeSocksConnectResultLocked(s *Stream_client, rep byte) error
 	}
 
 	var err error
-	if s.LocalSocksVersion == SOCKS4_VERSION {
+	if c.deliverLibraryConnectResult(s.StreamID, rep) { //H: a DialStream caller takes the result, nothing is written
+	} else if s.LocalSocksVersion == SOCKS4_VERSION { //H
 		err = c.sendSocks4Reply(s.NetConn, rep == SOCKS5_REPLY_SUCCESS)
 	} else {
 		err = c.sendSocksReply(s.NetConn, rep, SOCKS5_ATYP_IPV4, net.IPv4zero, 0)

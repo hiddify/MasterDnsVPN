@@ -331,14 +331,16 @@ func (c *Client) StartAsyncRuntime(parentCtx context.Context) error {
 		c.tunnelRX_TX_Workers, c.tunnelProcessWorkers)
 
 	// Start TCP/SOCKS Proxy Listener
-	c.tcpListener = NewTCPListener(c, c.cfg.ProtocolType)
-	if err := c.tcpListener.Start(runtimeCtx, c.cfg.ListenIP, c.cfg.ListenPort); err != nil {
-		c.log.Errorf("<red>❌ Failed to start %s proxy: %v</red>", c.cfg.ProtocolType, err)
-		return err
-	}
+	if !c.libraryMode { //H: a library caller opens streams with DialStream, no local proxy
+		c.tcpListener = NewTCPListener(c, c.cfg.ProtocolType)
+		if err := c.tcpListener.Start(runtimeCtx, c.cfg.ListenIP, c.cfg.ListenPort); err != nil {
+			c.log.Errorf("<red>❌ Failed to start %s proxy: %v</red>", c.cfg.ProtocolType, err)
+			return err
+		}
+	} //H
 
 	// Start DNS Listener if enabled
-	if c.cfg.LocalDNSEnabled {
+	if c.cfg.LocalDNSEnabled && !c.libraryMode { //H
 		c.dnsListener = NewDNSListener(c)
 		if err := c.dnsListener.Start(runtimeCtx, c.cfg.LocalDNSIP, c.cfg.LocalDNSPort); err != nil {
 			c.log.Errorf("<red>❌ Failed to start DNS resolver: %v</red>", err)
