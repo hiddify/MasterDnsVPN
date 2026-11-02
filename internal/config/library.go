@@ -13,7 +13,9 @@ package config
 
 import (
 	"fmt"
+	"net"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -25,11 +27,13 @@ func DefaultClientConfig() ClientConfig {
 
 // ParseResolverEntries reads resolver entries in the client_resolvers.txt formats:
 // "8.8.8.8", "1.1.1.1:5353", "192.168.1.0/30", "192.168.1.0/30:5353", "[2001:db8::1]:53".
-// Empty entries and comments are skipped, an invalid entry is an error.
+// Empty entries and comments are skipped, an invalid entry is an error. Unlike the resolver
+// file, which keeps one port per IP, a library caller may give one IP with several ports (local
+// test resolvers, a server answering on more than one port): each IP:port is its own resolver.
 func ParseResolverEntries(entries []string) ([]ResolverAddress, map[string]int, error) {
 	endpoints := make([]ResolverAddress, 0, len(entries))
 	resolverMap := make(map[string]int, len(entries))
-	seenIPs := make(map[string]struct{}, len(entries))
+	seen := make(map[string]struct{}, len(entries))
 
 	for _, entry := range entries {
 		line := strings.TrimSpace(entry)
@@ -43,7 +47,7 @@ func ParseResolverEntries(entries []string) ([]ResolverAddress, map[string]int, 
 		}
 
 		if !target.isPrefix {
-			addResolver(&endpoints, resolverMap, seenIPs, target.addr.String(), port)
+			addEndpoint(&endpoints, resolverMap, seen, target.addr.String(), port)
 			continue
 		}
 
@@ -52,7 +56,16 @@ func ParseResolverEntries(entries []string) ([]ResolverAddress, map[string]int, 
 			return nil, nil, fmt.Errorf("invalid resolver %q: the range has more than %d addresses", line, maxResolverHosts)
 		}
 
-		appendPrefixResolvers(&endpoints, resolverMap, seenIPs, target.prefix, port)
+		first, last := hostRange(target.prefix.Masked())
+		if !first.IsValid() || !last.IsValid() {
+			continue
+		}
+		for addr := first; ; addr = addr.Next() {
+			addEndpoint(&endpoints, resolverMap, seen, addr.String(), port)
+			if addr == last {
+				break
+			}
+		}
 	}
 
 	if len(endpoints) == 0 {
@@ -67,6 +80,19 @@ func ParseResolverEntries(entries []string) ([]ResolverAddress, map[string]int, 
 	})
 
 	return endpoints, resolverMap, nil
+}
+
+// addEndpoint adds ip:port once. resolverMap keeps the first port of each IP, as the file loader does.
+func addEndpoint(endpoints *[]ResolverAddress, resolverMap map[string]int, seen map[string]struct{}, ip string, port int) {
+	key := net.JoinHostPort(ip, strconv.Itoa(port))
+	if _, exists := seen[key]; exists {
+		return
+	}
+	seen[key] = struct{}{}
+	if _, exists := resolverMap[ip]; !exists {
+		resolverMap[ip] = port
+	}
+	*endpoints = append(*endpoints, ResolverAddress{IP: ip, Port: port})
 }
 
 // FinalizeClientConfig validates a configuration built in code and fills its derived values,
