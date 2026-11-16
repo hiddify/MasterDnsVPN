@@ -238,6 +238,17 @@ func (c *Client) Resolvers() (active int, total int) {
 	return c.inner.ActiveResolverCount(), c.inner.TotalResolverCount()
 }
 
+// TunnelProbe is one MTU test query for the tunnel domain and the check of its answer.
+type TunnelProbe = client.TunnelProbe
+
+// TunnelProbes builds the smallest upload and download MTU tests, as DNS queries to send to one
+// resolver through any DNS transport. A resolver whose answers pass every Check carries the
+// tunnel; one that answers ordinary queries may still drop or rewrite the tunnel's. It works
+// before Run, and each call builds new queries.
+func (c *Client) TunnelProbes() ([]TunnelProbe, error) {
+	return c.inner.TunnelProbes()
+}
+
 // MTU returns the upload and download MTU agreed with the server, 0 before the test.
 func (c *Client) MTU() (upload int, download int) {
 	return c.inner.SyncedMTU()
